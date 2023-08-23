@@ -1,4 +1,4 @@
-export default interface Character {
+export default interface CharacterModel {
     films: string[],
     shortFilms: string[],
     _id: number,

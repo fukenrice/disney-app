@@ -1,4 +1,4 @@
-import Character from "./CharacterModel";
+import CharacterModel from "./CharacterModel";
 
 
 export default interface NamedCharacterResponse {
@@ -8,5 +8,5 @@ export default interface NamedCharacterResponse {
         "previousPage": string,
         "nextPage": string
     },
-    data: Character[]
+    data: CharacterModel[]
 }
