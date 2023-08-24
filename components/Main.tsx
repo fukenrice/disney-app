@@ -1,10 +1,10 @@
 import {
     ActivityIndicator,
-    FlatList, Image,
+    FlatList, Image, StyleProp,
     StyleSheet,
     Text,
     TextInput, TouchableOpacity,
-    View
+    View, ViewStyle
 } from "react-native";
 import {StatusBar} from "expo-status-bar";
 import React, {useCallback, useEffect, useMemo, useState} from "react";
@@ -16,6 +16,8 @@ import NamedCharacterResponse from "../models/NamedCharacterResponse";
 import {useNavigation} from '@react-navigation/core'
 import BottomSheet from "@gorhom/bottom-sheet";
 import ListModel from "../models/ListModel";
+import { MaterialIcons } from '@expo/vector-icons';
+import {auth} from "../firebase/config";
 
 const SEARCH_URL = "https://api.disneyapi.dev/character?name="
 const ALL_CHARACTERS_URL = "https://api.disneyapi.dev/character?page=1"
@@ -55,6 +57,14 @@ export default function Main(): JSX.Element {
         key: "test1",
         characters: []
     }]
+
+    const handleSignOut = () => {
+        auth.signOut()
+            .then(() => {
+                navigation.replace("Login")
+            })
+            .catch(error => alert(error.message))
+    }
 
     const searchCharacters = async (url: string) => {
         setState(prevState => {
@@ -104,7 +114,14 @@ export default function Main(): JSX.Element {
     return <View style={styles.container}>
         <StatusBar hidden/>
         <View style={styles.header}>
-            <Text style={styles.title}>Disney</Text>
+            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                <Text style={styles.title}>Disney</Text>
+                <TouchableOpacity onPress={() => handleSignOut()}>
+                    <MaterialIcons style={{marginTop: 4}} name="logout" size={30} color="white" />
+                </TouchableOpacity>
+
+            </View>
+
             <View style={styles.inputContainer}>
                 <TextInput
                     style={styles.input}
@@ -128,7 +145,7 @@ export default function Main(): JSX.Element {
             snapPoints={snapPoints}
             onChange={handleSheetChanges}
             enablePanDownToClose={true}
-            handleIndicatorStyle={styles.handleIndicator}
+            handleIndicatorStyle={styles.handleIndicator as StyleProp<ViewStyle>}
             handleStyle={styles.handle}
         >
             {bottomSheetLists}

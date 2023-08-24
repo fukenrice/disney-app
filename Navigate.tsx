@@ -46,10 +46,9 @@ export type CharacterProps = StackScreenProps<RootStackParamList, 'Character'>;
 export default function Navigate() {
     return <NavigationContainer>
         <MainStack.Navigator>
+            <MainStack.Screen name="Login" component={Login} options={loginOptions}/>
             <MainStack.Screen name="Main" component={Main} options={mainOptions}/>
             <MainStack.Screen name="Character" component={Character} options={characterOptions}/>
-            <MainStack.Screen name="Login" component={Login} options={loginOptions}/>
-
             <MainStack.Screen name="CharacterList" component={CharacterList} options={characterListOptions}/>
         </MainStack.Navigator>
     </NavigationContainer>
