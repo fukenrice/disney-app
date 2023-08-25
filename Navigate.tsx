@@ -6,6 +6,8 @@ import CharacterList from "./components/CharacterList";
 import Character from "./components/Character";
 import Main from "./components/Main";
 import CharacterModel from "./models/CharacterModel";
+import ListModel from "./models/ListModel";
+import CommentModel from "./models/CommentModel";
 
 const commonOptions = {
     headerShown: false,
@@ -32,15 +34,23 @@ const characterListOptions = {
 }
 
 type RootStackParamList = {
-    Character: { char: CharacterModel };
+    Character: {
+        char: CharacterModel,
+        lists: ListModel[],
+        comments: CommentModel[]
+    };
     Main: undefined;
     Login: undefined;
-    CharacterList: undefined;
+    CharacterList: {
+        title: string,
+        chars: CharacterModel[]
+    };
 }
 
 const MainStack = createStackNavigator<RootStackParamList>()
 
 export type CharacterProps = StackScreenProps<RootStackParamList, 'Character'>;
+export type CharacterListProps = StackScreenProps<RootStackParamList, 'CharacterList'>;
 
 
 export default function Navigate() {

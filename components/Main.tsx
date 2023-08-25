@@ -16,9 +16,12 @@ import NamedCharacterResponse from "../models/NamedCharacterResponse";
 import {useNavigation} from '@react-navigation/core'
 import BottomSheet from "@gorhom/bottom-sheet";
 import ListModel from "../models/ListModel";
-import { MaterialIcons } from '@expo/vector-icons';
+import {MaterialIcons} from '@expo/vector-icons';
 import {auth} from "../firebase/config";
-
+import CommentModel from "../models/CommentModel";
+import {getCloudData, storeCloudData} from "../data/remote";
+import ListsSearch from "./ListsSearch";
+import { useIsFocused } from "@react-navigation/native";
 const SEARCH_URL = "https://api.disneyapi.dev/character?name="
 const ALL_CHARACTERS_URL = "https://api.disneyapi.dev/character?page=1"
 
@@ -33,30 +36,64 @@ const INITIAL_STATE: State = {
     loadedCharacters: []
 }
 
-
-
 export default function Main(): JSX.Element {
     const [state, setState] = useState(INITIAL_STATE)
     const navigation = useNavigation<any>()
+    const isFocused = useIsFocused();
+
+    const [listsState, setListsState] = useState<ListModel[]>([])
+    const [commentsState, setCommentsState] = useState<CommentModel[]>([])
+    const [displayedLists, setDisplayedLists] = useState<ListModel[]>([])
+    const [search, setSearch] = useState("")
+
     useEffect(() => {
         searchCharacters(ALL_CHARACTERS_URL)
     }, []);
 
-    const test = async () => {
-        const {data: {data}} = await axios.get<AllCharsResponse>(ALL_CHARACTERS_URL)
-        setState({loading: false, loadedCharacters: data})
+    useEffect(() => {
+        getData()
+    }, [isFocused]);
+
+    useEffect(() => {
+        filterLists(search)
+    }, [listsState]);
+
+
+    const getData = async () => {
+        const doc = await getCloudData() as { comments: CommentModel[], lists: ListModel[] }
+        setListsState(doc.lists)
+        setDisplayedLists(doc.lists)
+        setCommentsState(doc.comments)
+    }
+
+    const filterLists = (query: string) => {
+        setDisplayedLists(listsState.filter((e) => e.key.includes(query)))
+    }
+
+    const deleteList = (listName: string) => {
+        setListsState(prevState => {
+            const newLists = prevState.filter((e) => e.key !== listName)
+            setDisplayedLists(newLists.filter((e) => e.key.includes(search)))
+            storeCloudData({comments: commentsState, lists: newLists})
+            return newLists
+        })
+    }
+
+    const addNewList = (listName: string) => {
+        if (!listsState.find((e) => e.key === listName)) {
+            setListsState(prevState => {
+                const newList = [...prevState, {key: listName, characters: []}]
+                storeCloudData({comments: commentsState, lists: newList})
+                return newList
+            })
+        } else {
+            alert(`List with name "${listName}" already exists.`)
+        }
     }
 
     const renderRef = React.useRef<BottomSheet>(null)
-    const snapPoints = useMemo(() => ['50%'], []);
-    const handleSheetChanges = useCallback((index: number) => {
-        console.log('handleSheetChanges', index);
-    }, []);
+    const snapPoints = useMemo(() => ['50%'], [])
 
-    const sample: ListModel[] = [{
-        key: "test1",
-        characters: []
-    }]
 
     const handleSignOut = () => {
         auth.signOut()
@@ -85,10 +122,20 @@ export default function Main(): JSX.Element {
     const progressBar = <ActivityIndicator animating={true} size={"large"}/>
 
     const bottomSheetLists = <View style={styles.bottomSheet}>
-        <FlatList style={{width: "100%"}} data={sample} renderItem={({item}) => {
-            return <TouchableOpacity style={styles.listElementContainer}>
-                <Text style={{color: "white", fontSize: 30}}>{item.key}</Text>
-            </TouchableOpacity>
+        {<ListsSearch filterLists={filterLists} setSearch={setSearch} addNewList={addNewList} search={search}/>}
+        <FlatList style={{width: "100%"}} data={displayedLists} renderItem={({item}) => {
+            return <View style={styles.listElementContainer}>
+                <TouchableOpacity style={styles.listTitleContainer} onPress={() => {
+                    // console.log(item.characters)
+                    navigation.navigate("CharacterList", {chars: item.characters, title: item.key})
+                }}>
+                    <Text style={{color: "white", fontSize: 30}}>{item.key}</Text>
+                </TouchableOpacity>
+
+                <AntDesign name="minuscircleo" size={34} color="#ca3701" style={{marginTop: 5}} onPress={() => {
+                    deleteList(item.key)
+                }}/>
+            </View>
         }}
         />
     </View>
@@ -117,7 +164,7 @@ export default function Main(): JSX.Element {
             <View style={{flexDirection: 'row', alignItems: 'center'}}>
                 <Text style={styles.title}>Disney</Text>
                 <TouchableOpacity onPress={() => handleSignOut()}>
-                    <MaterialIcons style={{marginTop: 4}} name="logout" size={30} color="white" />
+                    <MaterialIcons style={{marginTop: 4}} name="logout" size={30} color="white"/>
                 </TouchableOpacity>
 
             </View>
@@ -143,7 +190,6 @@ export default function Main(): JSX.Element {
             ref={renderRef}
             index={-1}
             snapPoints={snapPoints}
-            onChange={handleSheetChanges}
             enablePanDownToClose={true}
             handleIndicatorStyle={styles.handleIndicator as StyleProp<ViewStyle>}
             handleStyle={styles.handle}
@@ -199,7 +245,7 @@ const styles = StyleSheet.create(
         image: {
             width: '100%',
             height: undefined,
-            aspectRatio: 2/3,
+            aspectRatio: 2 / 3,
             flex: 1,
             borderWidth: 1,
             borderColor: 'white'
@@ -224,15 +270,16 @@ const styles = StyleSheet.create(
         handle: {
             backgroundColor: "#444444",
         },
-        listElementContainer: {
+        listTitleContainer: {
             borderWidth: 1,
             borderColor: 'black',
             borderRadius: 5,
+            width: "80%",
+        },
+        listElementContainer: {
             width: "100%",
             flexDirection: "row",
             justifyContent: 'space-between',
         },
-
-
     }
 )

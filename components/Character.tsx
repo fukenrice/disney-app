@@ -1,4 +1,5 @@
 import {
+    Animated,
     FlatList,
     Image,
     ImageBackground,
@@ -10,7 +11,7 @@ import {
     View, ViewStyle
 } from "react-native";
 import {LinearGradient} from "expo-linear-gradient";
-import React, {useCallback, useEffect, useMemo, useRef} from "react";
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {CharacterProps} from "../Navigate";
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {AntDesign} from '@expo/vector-icons';
@@ -19,14 +20,113 @@ import {
     longPressGestureHandlerProps
 } from "react-native-gesture-handler/lib/typescript/handlers/LongPressGestureHandler";
 import ListModel from "../models/ListModel";
+import add = Animated.add;
+import {getCloudData, storeCloudData} from "../data/remote";
+import CommentModel from "../models/CommentModel";
+import ListsSearch from "./ListsSearch";
 
 export default function Character({route: {params: {char}}}: CharacterProps): JSX.Element {
 
+    const initComment = (comments: CommentModel[]) => {
+        for (var commentElem of comments) {
+            if (commentElem.charId === char._id) {
+                setComment(commentElem.comment)
+                break
+            }
+        }
+    }
+
+    const getData = async () => {
+        const doc = await getCloudData() as { comments: CommentModel[], lists: ListModel[] }
+        setListsState(doc.lists)
+        setDisplayedLists(doc.lists)
+        setCommentsState(doc.comments)
+        initComment(doc.comments)
+    }
+
     useEffect(() => {
-        console.log(char)
-        // TODO: load lists
-        // TODO: load comments
+        getData()
     }, []);
+
+    const [listsState, setListsState] = useState<ListModel[]>([])
+    const [commentsState, setCommentsState] = useState<CommentModel[]>([])
+    const [displayedLists, setDisplayedLists] = useState<ListModel[]>([])
+    const [comment, setComment] = useState("")
+    const [search, setSearch] = useState("")
+
+    useEffect(() => {
+        filterLists(search)
+    }, [listsState]);
+
+    const filterLists = (query: string) => {
+        setDisplayedLists(listsState.filter((e) => e.key.includes(query)))
+    }
+
+    const addNewList = (listName: string) => {
+        if (!listsState.find((e) => e.key === listName)) {
+            setListsState(prevState => {
+                const newList = [...prevState, {key: listName, characters: []}]
+                storeCloudData({comments: commentsState, lists: newList})
+                return newList
+            })
+        } else {
+            alert(`List with name "${listName}" already exists.`)
+        }
+    }
+
+    const addToList = (listKey: string) => {
+        setListsState((prevState) => {
+            // Do I need to create a copy or I can just work with state itself?
+            var prevLists = [...prevState]
+            for (var listElement of prevLists) {
+                if (listElement.key === listKey) {
+                    listElement.characters = [...listElement.characters, char]
+                    break;
+                }
+            }
+            storeCloudData({comments: commentsState, lists: prevLists})
+            return prevLists
+        })
+    }
+
+    const removeFromList = (listKey: string) => {
+        setListsState((prevState) => {
+            // Do I need to create a copy or I can just work with state itself?
+            var prevLists = [...prevState]
+            for (var listElement of prevLists) {
+                if (listElement.key === listKey) {
+                    console.log(char._id === listElement.characters[0]._id)
+                    listElement.characters = listElement.characters.filter((e) => {
+                        return e._id !== char._id
+                    })
+                    console.log(listElement.characters)
+                    break;
+                }
+            }
+            storeCloudData({comments: commentsState, lists: prevLists})
+            return prevLists
+        })
+    }
+
+    const addComment = (com: string) => {
+        setCommentsState((prevState) => {
+            let added = false
+            var prevComments = [...prevState]
+            for (var comElement of prevComments) {
+                if (comElement.charId === char._id) {
+                    comElement.comment = com
+                    added = true
+                    break
+                }
+            }
+            if (!added) {
+                prevComments = [...prevComments, {charId: char._id, comment: com}]
+            }
+            storeCloudData({comments: prevComments, lists: listsState})
+            return prevComments
+        })
+
+    }
 
     const renderRef = React.useRef<BottomSheet>(null)
     const commentsRef = React.useRef<BottomSheet>(null)
@@ -35,20 +135,26 @@ export default function Character({route: {params: {char}}}: CharacterProps): JS
         console.log('handleSheetChanges', index);
     }, []);
 
-    const sample: ListModel[] = [{
-        key: "test1",
-        characters: []
-    }]
-    const comment = ""
 
-    const characterInList = (listName: string, charName: string): boolean => {
-
+    const characterInList = (listName: string, charId: number): boolean => {
+        for (var listElement of listsState) {
+            if (listElement.key === listName) {
+                for (var charElem of listElement.characters) {
+                    if (charElem._id === charId) {
+                        return true
+                    }
+                }
+            }
+        }
         return false
     }
 
     const bottomSheetComments = <View style={styles.bottomSheet}>
         <View style={styles.commentContainer}>
-            <TextInput style={styles.input} multiline={true} placeholder={"Comment..."} placeholderTextColor={"#808080"}>
+            <TextInput style={styles.input} multiline={true} placeholder={"Comment..."} placeholderTextColor={"#808080"}
+                       onChangeText={(text) => {
+                           addComment(text)
+                       }}>
                 {comment}
             </TextInput>
         </View>
@@ -57,33 +163,18 @@ export default function Character({route: {params: {char}}}: CharacterProps): JS
     </View>
 
     const bottomSheetLists = <View style={styles.bottomSheet}>
-        <View style={styles.listElementContainer}>
-            <View style={styles.inputContainer}>
-                <TextInput
-                    style={styles.input}
-                    placeholder={"Search..."}
-                    placeholderTextColor="grey"
-                    onSubmitEditing={(event) => {
-                        // TODO: filter list
-                    }}
-                />
-            </View>
-            <AntDesign name="pluscircleo" size={34} color="#ca3701" style={{marginTop: 5}} onPress={() => {
-                // TODO: Add list
-            }}/>
-        </View>
+        {<ListsSearch filterLists={filterLists} setSearch={setSearch} addNewList={addNewList} search={search}/>}
 
-        <FlatList style={{width: "100%"}} data={sample} renderItem={({item}) => {
+        <FlatList style={{width: "100%"}} data={displayedLists} renderItem={({item}) => {
             return <View style={styles.listElementContainer}>
                 <Text style={{color: "white", fontSize: 30}}>{item.key}</Text>
-                {/*<Text style={{color: "white", fontSize: 30}}>{item.key}</Text>*/}
-                {characterInList(item.key, char.name) ?
+                {characterInList(item.key, char._id) ?
                     <AntDesign name="minuscircleo" size={34} color="#ca3701" style={{marginTop: 5}} onPress={() => {
-                        // TODO: Remove from list list
+                        removeFromList(item.key)
                     }}/>
                     :
                     <AntDesign name="pluscircleo" size={34} color="#ca3701" style={{marginTop: 5}} onPress={() => {
-                        // TODO: Add to list
+                        addToList(item.key)
                     }}
                     />
                 }
@@ -103,14 +194,11 @@ export default function Character({route: {params: {char}}}: CharacterProps): JS
             <View style={styles.fabContainer}>
                 <MaterialCommunityIcons name="star-circle" size={64} style={styles.fab}
                                         onPress={() => {
-
-                                            console.log("123")
                                             commentsRef.current?.close()
                                             renderRef.current?.expand()
 
                                         }}
                 />
-                {/*// TODO: Повесиить онклик на фабы и выводить ботомщит*/}
 
                 <MaterialCommunityIcons name="pencil-circle" size={64} style={styles.fab}
                                         onPress={() => {
@@ -202,7 +290,6 @@ const styles = StyleSheet.create({
         top: 10
     },
     fab: {
-        // position: "absolute",
         color: "#ca3701",
         right: 10,
         top: 10
@@ -232,8 +319,6 @@ const styles = StyleSheet.create({
         paddingLeft: 4,
     },
     listElementContainer: {
-        // flex: 1,
-        // alignItems: "flex-start",
         width: "100%",
         flexDirection: "row",
         justifyContent: 'space-between',
@@ -241,7 +326,6 @@ const styles = StyleSheet.create({
     commentContainer: {
         width: "100%",
         height: "100%",
-        // backgroundColor: "#808080",
         backgroundColor: "#555555",
         padding: 5,
         borderRadius: 10,
