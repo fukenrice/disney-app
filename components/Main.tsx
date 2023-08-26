@@ -7,7 +7,7 @@ import {
     View, ViewStyle
 } from "react-native";
 import {StatusBar} from "expo-status-bar";
-import React, {useCallback, useEffect, useMemo, useState} from "react";
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {AntDesign, Ionicons} from '@expo/vector-icons';
 import axios from "axios";
 import CharacterModel from "../models/CharacterModel";
@@ -22,6 +22,8 @@ import CommentModel from "../models/CommentModel";
 import {getCloudData, storeCloudData} from "../data/remote";
 import ListsSearch from "./ListsSearch";
 import { useIsFocused } from "@react-navigation/native";
+import {getLocalChars, getLocalData, storeChars, storeData} from "../data/local";
+import {useNetInfo} from "@react-native-community/netinfo";
 const SEARCH_URL = "https://api.disneyapi.dev/character?name="
 const ALL_CHARACTERS_URL = "https://api.disneyapi.dev/character?page=1"
 
@@ -40,15 +42,28 @@ export default function Main(): JSX.Element {
     const [state, setState] = useState(INITIAL_STATE)
     const navigation = useNavigation<any>()
     const isFocused = useIsFocused();
+    const netInfo = useNetInfo();
 
     const [listsState, setListsState] = useState<ListModel[]>([])
     const [commentsState, setCommentsState] = useState<CommentModel[]>([])
     const [displayedLists, setDisplayedLists] = useState<ListModel[]>([])
     const [search, setSearch] = useState("")
+    const listsRef = useRef<ListModel[]>()
+    listsRef.current = listsState
+    const commentsRef = useRef<CommentModel[]>()
+    commentsRef.current = commentsState
 
     useEffect(() => {
         searchCharacters(ALL_CHARACTERS_URL)
+        return () => {
+            storeData({comments: commentsRef.current!, lists: listsRef.current!})
+        }
     }, []);
+
+    useEffect(() => {
+        searchCharacters(ALL_CHARACTERS_URL)
+        getData()
+    }, [netInfo]);
 
     useEffect(() => {
         getData()
@@ -60,10 +75,16 @@ export default function Main(): JSX.Element {
 
 
     const getData = async () => {
-        const doc = await getCloudData() as { comments: CommentModel[], lists: ListModel[] }
-        setListsState(doc.lists)
-        setDisplayedLists(doc.lists)
-        setCommentsState(doc.comments)
+        var doc: { comments: CommentModel[], lists: ListModel[] } | undefined
+        if (netInfo.isConnected) {
+            doc = await getCloudData() as { comments: CommentModel[], lists: ListModel[] }
+        } else {
+            doc = await getLocalData()
+        }
+
+        setListsState(doc!.lists)
+        setDisplayedLists(doc!.lists)
+        setCommentsState(doc!.comments)
     }
 
     const filterLists = (query: string) => {
@@ -111,9 +132,18 @@ export default function Main(): JSX.Element {
             url = ALL_CHARACTERS_URL
         }
         if (url === ALL_CHARACTERS_URL) {
-            const {data: {data: qwe}} = await axios.get<AllCharsResponse>(ALL_CHARACTERS_URL)
-            setState({loading: false, loadedCharacters: qwe})
+            if (!netInfo.isConnected) {
+                const chars = await getLocalChars()
+                setState({loading: false, loadedCharacters: chars!})
+                return
+            }
+            const {data: {data: chars}} = await axios.get<AllCharsResponse>(ALL_CHARACTERS_URL)
+            storeChars(chars)
+            setState({loading: false, loadedCharacters: chars})
         } else {
+            if (!netInfo.isConnected) {
+                alert("No internet connection. Now you only can see cached characters.")
+            }
             axios.get<NamedCharacterResponse>(url).then((response) => {
                 setState({loading: false, loadedCharacters: response.data.data})
             })

@@ -1,5 +1,5 @@
 import {
-    Animated,
+    Animated, BackHandler,
     FlatList,
     Image,
     ImageBackground,
@@ -16,16 +16,20 @@ import {CharacterProps} from "../Navigate";
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {AntDesign} from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
-import {
-    longPressGestureHandlerProps
-} from "react-native-gesture-handler/lib/typescript/handlers/LongPressGestureHandler";
+import { useFocusEffect } from '@react-navigation/native';
 import ListModel from "../models/ListModel";
 import add = Animated.add;
 import {getCloudData, storeCloudData} from "../data/remote";
 import CommentModel from "../models/CommentModel";
 import ListsSearch from "./ListsSearch";
+import {getLocalData, storeData} from "../data/local";
+import {useNetInfo} from "@react-native-community/netinfo";
+import {useNavigation} from "@react-navigation/core";
+import {useIsFocused} from "@react-navigation/native";
 
 export default function Character({route: {params: {char}}}: CharacterProps): JSX.Element {
+
+    const netInfo = useNetInfo();
 
     const initComment = (comments: CommentModel[]) => {
         for (var commentElem of comments) {
@@ -37,22 +41,42 @@ export default function Character({route: {params: {char}}}: CharacterProps): JS
     }
 
     const getData = async () => {
-        const doc = await getCloudData() as { comments: CommentModel[], lists: ListModel[] }
-        setListsState(doc.lists)
-        setDisplayedLists(doc.lists)
-        setCommentsState(doc.comments)
-        initComment(doc.comments)
+        var doc: { comments: CommentModel[], lists: ListModel[] } | undefined
+        if (netInfo.isConnected) {
+            doc = await getCloudData() as { comments: CommentModel[], lists: ListModel[] }
+        } else {
+            doc = await getLocalData()
+        }
+
+        setListsState(doc!.lists)
+        setDisplayedLists(doc!.lists)
+        setCommentsState(doc!.comments)
+        initComment(doc!.comments)
     }
 
     useEffect(() => {
         getData()
-    }, []);
+    }, [netInfo]);
+
 
     const [listsState, setListsState] = useState<ListModel[]>([])
     const [commentsState, setCommentsState] = useState<CommentModel[]>([])
     const [displayedLists, setDisplayedLists] = useState<ListModel[]>([])
     const [comment, setComment] = useState("")
     const [search, setSearch] = useState("")
+    const listsRef = useRef<ListModel[]>()
+    listsRef.current = listsState
+    const commentsRef = useRef<CommentModel[]>()
+    commentsRef.current = commentsState
+
+
+    useEffect(() => {
+        getData()
+        return () => {
+            storeData({comments: commentsRef.current!, lists: listsRef.current!})
+        }
+    }, []);
+
 
     useEffect(() => {
         filterLists(search)
@@ -95,11 +119,9 @@ export default function Character({route: {params: {char}}}: CharacterProps): JS
             var prevLists = [...prevState]
             for (var listElement of prevLists) {
                 if (listElement.key === listKey) {
-                    console.log(char._id === listElement.characters[0]._id)
                     listElement.characters = listElement.characters.filter((e) => {
                         return e._id !== char._id
                     })
-                    console.log(listElement.characters)
                     break;
                 }
             }
@@ -129,11 +151,8 @@ export default function Character({route: {params: {char}}}: CharacterProps): JS
     }
 
     const renderRef = React.useRef<BottomSheet>(null)
-    const commentsRef = React.useRef<BottomSheet>(null)
+    const commentsSheetRef = React.useRef<BottomSheet>(null)
     const snapPoints = useMemo(() => ['50%'], []);
-    const handleSheetChanges = useCallback((index: number) => {
-        console.log('handleSheetChanges', index);
-    }, []);
 
 
     const characterInList = (listName: string, charId: number): boolean => {
@@ -194,7 +213,7 @@ export default function Character({route: {params: {char}}}: CharacterProps): JS
             <View style={styles.fabContainer}>
                 <MaterialCommunityIcons name="star-circle" size={64} style={styles.fab}
                                         onPress={() => {
-                                            commentsRef.current?.close()
+                                            commentsSheetRef.current?.close()
                                             renderRef.current?.expand()
 
                                         }}
@@ -203,7 +222,7 @@ export default function Character({route: {params: {char}}}: CharacterProps): JS
                 <MaterialCommunityIcons name="pencil-circle" size={64} style={styles.fab}
                                         onPress={() => {
                                             renderRef.current?.close()
-                                            commentsRef.current?.expand()
+                                            commentsSheetRef.current?.expand()
                                         }}/>
             </View>
             <Image source={{uri: char.imageUrl}} style={styles.image}/>
@@ -229,7 +248,6 @@ export default function Character({route: {params: {char}}}: CharacterProps): JS
             ref={renderRef}
             index={-1}
             snapPoints={snapPoints}
-            onChange={handleSheetChanges}
             enablePanDownToClose={true}
             handleIndicatorStyle={styles.handleIndicator as StyleProp<ViewStyle>}
             handleStyle={styles.handle}
@@ -238,10 +256,9 @@ export default function Character({route: {params: {char}}}: CharacterProps): JS
         </BottomSheet>
 
         <BottomSheet
-            ref={commentsRef}
+            ref={commentsSheetRef}
             index={-1}
             snapPoints={snapPoints}
-            onChange={handleSheetChanges}
             enablePanDownToClose={true}
             handleIndicatorStyle={styles.handleIndicator as StyleProp<ViewStyle>}
             handleStyle={styles.handle}

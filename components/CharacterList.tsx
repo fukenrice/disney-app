@@ -16,36 +16,34 @@ import {useIsFocused} from "@react-navigation/native";
 import {getCloudData} from "../data/remote";
 import CommentModel from "../models/CommentModel";
 import ListModel from "../models/ListModel";
+import {getLocalData} from "../data/local";
+import {useNetInfo} from "@react-native-community/netinfo";
 
 export default function CharacterList({route: {params: {title, chars}}}: CharacterListProps): JSX.Element {
     const navigation = useNavigation<any>()
     const isFocused = useIsFocused();
     const [displayedChars, setDisplayedChars] = useState<CharacterModel[]>(chars)
     const [searchQuery, setSearchQuery] = useState<string>("")
-    // const [allChars, setAllLists] = useState<ListModel[]>([])
+    const netInfo = useNetInfo()
     const getData = async () => {
-        const doc = await getCloudData() as { comments: CommentModel[], lists: ListModel[] }
-        chars = doc.lists.find((e) => e.key === title)?.characters!
-        // setAllLists(doc.lists)
+        var doc: { comments: CommentModel[], lists: ListModel[] } | undefined
+        if (netInfo.isConnected) {
+            doc = await getCloudData() as { comments: CommentModel[], lists: ListModel[] }
+        } else {
+            doc = await getLocalData()
+        }
+        chars = doc!.lists.find((e) => e.key === title)?.characters!
         filterChars(searchQuery)
     }
-
-    useEffect(() => {
-        console.log(chars)
-    }, []);
 
     useEffect(() => {
         getData()
     }, [isFocused]);
 
 
-
     const filterChars = (query: string) => {
         setDisplayedChars(chars.filter((e) => e.name.includes(query)))
     }
-
-
-
 
     const list = <FlatList
         data={displayedChars}
