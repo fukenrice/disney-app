@@ -32,7 +32,7 @@ export default function Login(): JSX.Element {
     useEffect(() => {
         return auth.onAuthStateChanged(user => {
             if (user) {
-                navigation.navigate("Main")
+                navigation.replace("Main")
             }
         })
     }, []);
