@@ -7,7 +7,7 @@ import {
     View, ViewStyle
 } from "react-native";
 import {StatusBar} from "expo-status-bar";
-import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import React, { useEffect, useMemo, useRef, useState} from "react";
 import {AntDesign, Ionicons} from '@expo/vector-icons';
 import axios from "axios";
 import CharacterModel from "../models/CharacterModel";

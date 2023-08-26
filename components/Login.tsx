@@ -1,4 +1,4 @@
-import {Button, StyleSheet, Text, TextInput, TouchableOpacity, View} from "react-native";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View} from "react-native";
 import {auth} from "../firebase/config";
 import {useEffect, useState} from "react";
 import {useNavigation} from "@react-navigation/core";

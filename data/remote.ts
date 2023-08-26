@@ -1,4 +1,4 @@
-import {auth, app, db, getFirestore, doc, setDoc, getDoc} from "../firebase/config"
+import {auth, db, doc, setDoc, getDoc} from "../firebase/config"
 import ListModel from "../models/ListModel";
 import CommentModel from "../models/CommentModel";
 

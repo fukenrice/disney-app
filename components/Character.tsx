@@ -1,5 +1,4 @@
 import {
-    Animated, BackHandler,
     FlatList,
     Image,
     ImageBackground,
@@ -7,8 +6,7 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    TouchableOpacity,
-    View, ViewStyle
+        View, ViewStyle
 } from "react-native";
 import {LinearGradient} from "expo-linear-gradient";
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
@@ -16,16 +14,12 @@ import {CharacterProps} from "../Navigate";
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {AntDesign} from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
-import { useFocusEffect } from '@react-navigation/native';
 import ListModel from "../models/ListModel";
-import add = Animated.add;
 import {getCloudData, storeCloudData} from "../data/remote";
 import CommentModel from "../models/CommentModel";
 import ListsSearch from "./ListsSearch";
 import {getLocalData, storeData} from "../data/local";
 import {useNetInfo} from "@react-native-community/netinfo";
-import {useNavigation} from "@react-navigation/core";
-import {useIsFocused} from "@react-navigation/native";
 
 export default function Character({route: {params: {char}}}: CharacterProps): JSX.Element {
 
@@ -228,16 +222,16 @@ export default function Character({route: {params: {char}}}: CharacterProps): JS
             <Image source={{uri: char.imageUrl}} style={styles.image}/>
             <Text style={styles.name}>{char.name}</Text>
             <ScrollView style={styles.description}>
-                <Text style={styles.text}>List of films: {char.films.map((item) => {
+                <Text style={styles.text}>List of films: {char.films.map((item: string) => {
                     return item + "; "
                 })}</Text>
-                <Text style={styles.text}>List of TV Shows: {char.tvShows.map((item) => {
+                <Text style={styles.text}>List of TV Shows: {char.tvShows.map((item: string) => {
                     return item + "; "
                 })}</Text>
-                <Text style={styles.text}>List of short films: {char.shortFilms.map((item) => {
+                <Text style={styles.text}>List of short films: {char.shortFilms.map((item: string) => {
                     return item + "; "
                 })}</Text>
-                <Text style={styles.text}>List of video games: {char.videoGames.map((item) => {
+                <Text style={styles.text}>List of video games: {char.videoGames.map((item: string) => {
                     return item + "; "
                 })}</Text>
             </ScrollView>

@@ -6,7 +6,7 @@ import {
     View
 } from "react-native";
 import {StatusBar} from "expo-status-bar";
-import React, {useCallback, useEffect, useMemo, useState} from "react";
+import React, { useEffect, useState} from "react";
 import CharacterModel from "../models/CharacterModel";
 
 import {useNavigation} from '@react-navigation/core'
