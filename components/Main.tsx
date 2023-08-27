@@ -1,5 +1,5 @@
 import {
-    ActivityIndicator,
+    ActivityIndicator, Alert,
     FlatList, Image, StyleProp,
     StyleSheet,
     Text,
@@ -7,7 +7,7 @@ import {
     View, ViewStyle
 } from "react-native";
 import {StatusBar} from "expo-status-bar";
-import React, { useEffect, useMemo, useRef, useState} from "react";
+import React, {useEffect, useMemo, useRef, useState} from "react";
 import {AntDesign, Ionicons} from '@expo/vector-icons';
 import axios from "axios";
 import CharacterModel from "../models/CharacterModel";
@@ -19,11 +19,12 @@ import ListModel from "../models/ListModel";
 import {MaterialIcons} from '@expo/vector-icons';
 import {auth} from "../firebase/config";
 import CommentModel from "../models/CommentModel";
-import {getCloudData, storeCloudData} from "../data/remote";
+import {getCloudData, storeCloudData, wipeData} from "../data/remote";
 import ListsSearch from "./ListsSearch";
-import { useIsFocused } from "@react-navigation/native";
-import {getLocalChars, getLocalData, storeChars, storeData} from "../data/local";
+import {useIsFocused} from "@react-navigation/native";
+import {getLocalChars, getLocalData, storeChars, storeData, wipeLocalData} from "../data/local";
 import {useNetInfo} from "@react-native-community/netinfo";
+
 const SEARCH_URL = "https://api.disneyapi.dev/character?name="
 const ALL_CHARACTERS_URL = "https://api.disneyapi.dev/character?page=1"
 
@@ -56,7 +57,7 @@ export default function Main(): JSX.Element {
     useEffect(() => {
         searchCharacters(ALL_CHARACTERS_URL)
         return () => {
-            storeData({comments: commentsRef.current!, lists: listsRef.current!})
+            storeData({comments: commentsRef.current!, lists: listsRef.current!, uid: auth.currentUser?.uid!})
         }
     }, []);
 
@@ -118,7 +119,10 @@ export default function Main(): JSX.Element {
 
     const handleSignOut = () => {
         auth.signOut()
-            .then(() => {
+            .then(async () => {
+                await wipeLocalData()
+                setListsState([])
+                setCommentsState([])
                 navigation.replace("Login")
             })
             .catch(error => alert(error.message))
@@ -187,6 +191,23 @@ export default function Main(): JSX.Element {
         numColumns={3}
     />
 
+    const deleteAccountAlert = () => {
+        Alert.alert('Deleting account', 'Are you sure that you want to delete your account?', [
+            {
+                text: 'No',
+            },
+            {
+                text: 'Delete my account', onPress: async () => {
+                    await wipeData()
+                    await wipeLocalData()
+                    setListsState([])
+                    setCommentsState([])
+                    auth.currentUser?.delete().then(() => navigation.replace("Login"))
+                }
+            },
+        ]);
+    }
+
 
     return <View style={styles.container}>
         <StatusBar hidden/>
@@ -196,6 +217,9 @@ export default function Main(): JSX.Element {
                 <TouchableOpacity onPress={() => handleSignOut()}>
                     <MaterialIcons style={{marginTop: 4}} name="logout" size={30} color="white"/>
                 </TouchableOpacity>
+                <MaterialIcons style={{marginTop: 4}} name="person-remove" size={30} color="white" onPress={() => {
+                    deleteAccountAlert()
+                }}/>
 
             </View>
 

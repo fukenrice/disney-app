@@ -20,6 +20,7 @@ import CommentModel from "../models/CommentModel";
 import ListsSearch from "./ListsSearch";
 import {getLocalData, storeData} from "../data/local";
 import {useNetInfo} from "@react-native-community/netinfo";
+import {auth} from "../firebase/config";
 
 export default function Character({route: {params: {char}}}: CharacterProps): JSX.Element {
 
@@ -67,7 +68,7 @@ export default function Character({route: {params: {char}}}: CharacterProps): JS
     useEffect(() => {
         getData()
         return () => {
-            storeData({comments: commentsRef.current!, lists: listsRef.current!})
+            storeData({comments: commentsRef.current!, lists: listsRef.current!, uid: auth.currentUser?.uid!})
         }
     }, []);
 
@@ -318,7 +319,10 @@ const styles = StyleSheet.create({
         backgroundColor: "#444444",
     },
     input: {
-        color: "white"
+        // flex: 1,
+        // height: "100%",
+        color: "white",
+
     },
     inputContainer: {
         alignItems: "flex-start",

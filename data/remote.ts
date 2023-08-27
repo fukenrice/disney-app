@@ -1,4 +1,4 @@
-import {auth, db, doc, setDoc, getDoc} from "../firebase/config"
+import {auth, db, doc, setDoc, getDoc, deleteDoc} from "../firebase/config"
 import ListModel from "../models/ListModel";
 import CommentModel from "../models/CommentModel";
 
@@ -16,6 +16,15 @@ const getCloudData = async () => {
     }
 }
 
+const wipeData = async () => {
+    try {
+        const docRef = doc(db, "users", auth.currentUser?.uid!)
+        deleteDoc(docRef)
+    } catch (e) {
+        console.log(e)
+    }
+}
+
 const storeCloudData = async (value: {comments: CommentModel[], lists: ListModel[]}) => {
     try {
         const docref = await setDoc(doc(db, "users", auth.currentUser?.uid!), value)
@@ -24,4 +33,4 @@ const storeCloudData = async (value: {comments: CommentModel[], lists: ListModel
     }
 }
 
-export {storeCloudData, getCloudData}
+export {storeCloudData, getCloudData, wipeData}

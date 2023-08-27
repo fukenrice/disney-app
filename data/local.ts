@@ -7,13 +7,26 @@ import CharacterModel from "../models/CharacterModel";
 const getLocalData = async () => {
     try {
         const jsonValue = await AsyncStorage.getItem("data")
-        return jsonValue != null ? JSON.parse(jsonValue) as {comments: CommentModel[], lists: ListModel[]} : {comments: [], lists: []}
+        return jsonValue != null ? JSON.parse(jsonValue) as {
+            comments: CommentModel[],
+            lists: ListModel[],
+            uid: string
+        } : {comments: [], lists: [], uid: ""}
     } catch (e) {
         console.log(e)
     }
 }
 
-const storeData = async (value: {comments: CommentModel[], lists: ListModel[]}) => {
+const wipeLocalData = async () => {
+    try {
+        await AsyncStorage.removeItem("data")
+        await AsyncStorage.removeItem("chars")
+    } catch (e) {
+        console.log(e)
+    }
+}
+
+const storeData = async (value: { comments: CommentModel[], lists: ListModel[], uid: string, }) => {
     try {
         const jsonValue = JSON.stringify(value)
         await AsyncStorage.setItem("data", jsonValue)
@@ -22,7 +35,7 @@ const storeData = async (value: {comments: CommentModel[], lists: ListModel[]}) 
     }
 }
 
-const getLocalChars = async () => {
+export const getLocalChars = async () => {
     try {
         const jsonValue = await AsyncStorage.getItem("chars")
         return jsonValue != null ? JSON.parse(jsonValue) as CharacterModel[] : []
@@ -40,4 +53,4 @@ const storeChars = async (value: CharacterModel[]) => {
     }
 }
 
-export {storeData, storeChars, getLocalData, getLocalChars}
+export {storeData, storeChars, getLocalData, wipeLocalData}
